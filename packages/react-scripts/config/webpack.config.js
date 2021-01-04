@@ -24,7 +24,6 @@ const ManifestPlugin = require('webpack-manifest-plugin');
 const InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin');
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 const WatchMissingNodeModulesPlugin = require('react-dev-utils/WatchMissingNodeModulesPlugin');
-const ModuleScopePlugin = require('react-dev-utils/ModuleScopePlugin');
 const getCSSModuleLocalIdent = require('react-dev-utils/getCSSModuleLocalIdent');
 const ESLintPlugin = require('eslint-webpack-plugin');
 const paths = require('./paths');
@@ -87,6 +86,12 @@ const hasJsxRuntime = (() => {
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function (webpackEnv) {
+  /* YOOP CUSTOM CONFIG */
+
+  const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin/lib');
+  const tsConfigPath = path.join(paths.appPath, 'tsconfig.json');
+  /* END YOOP CUSTOM CONFIG */
+
   const isEnvDevelopment = webpackEnv === 'development';
   const isEnvProduction = webpackEnv === 'production';
 
@@ -164,6 +169,16 @@ module.exports = function (webpackEnv) {
     }
     return loaders;
   };
+
+  let extraPlugins = [];
+
+  const getPlugins = require(path.join(
+    paths.appPath,
+    'config/extra-webpack-plugins.js'
+  ));
+  if (getPlugins) {
+    extraPlugins = getPlugins(webpack);
+  }
 
   return {
     mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
@@ -346,15 +361,7 @@ module.exports = function (webpackEnv) {
         // Adds support for installing with Plug'n'Play, leading to faster installs and adding
         // guards against forgotten dependencies and such.
         PnpWebpackPlugin,
-        // Prevents users from importing files from outside of src/ (or node_modules/).
-        // This often causes confusion because we only process files within src/ with babel.
-        // To fix this, we prevent you from importing files out of src/ -- if you'd like to,
-        // please link the files into your node_modules/ and let module-resolution kick in.
-        // Make sure your source files are compiled, as they will not be processed in any way.
-        new ModuleScopePlugin(paths.appSrc, [
-          paths.appPackageJson,
-          reactRefreshOverlayEntry,
-        ]),
+        new TsconfigPathsPlugin({ configFile: tsConfigPath }),
       ],
     },
     resolveLoader: {
@@ -400,7 +407,7 @@ module.exports = function (webpackEnv) {
             // The preset includes JSX, Flow, TypeScript, and some ESnext features.
             {
               test: /\.(js|mjs|jsx|ts|tsx)$/,
-              include: paths.appSrc,
+              include: paths.appModules.concat(paths.appSrc),
               loader: require.resolve('babel-loader'),
               options: {
                 customize: require.resolve(
@@ -413,6 +420,11 @@ module.exports = function (webpackEnv) {
                       runtime: hasJsxRuntime ? 'automatic' : 'classic',
                     },
                   ],
+                  [
+                    '@babel/preset-typescript',
+                    { allExtensions: true, isTSX: true },
+                  ],
+                  ['@babel/preset-react'],
                 ],
                 // @remove-on-eject-begin
                 babelrc: false,
@@ -773,6 +785,7 @@ module.exports = function (webpackEnv) {
           },
         },
       }),
+      ...extraPlugins,
     ].filter(Boolean),
     // Some libraries import Node modules but don't use them in the browser.
     // Tell webpack to provide empty mocks for them so importing them works.

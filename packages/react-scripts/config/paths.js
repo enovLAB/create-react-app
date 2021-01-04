@@ -143,3 +143,21 @@ if (
 // @remove-on-eject-end
 
 module.exports.moduleFileExtensions = moduleFileExtensions;
+
+// Custom config
+
+const rootPath = path.resolve(module.exports.appPath, '../').endsWith('modules')
+  ? path.resolve(module.exports.appPath, '../../')
+  : module.exports.appPath;
+
+module.exports.rootAppPath = rootPath;
+module.exports.appModules = [];
+module.exports.allAppModules = fs.readdirSync(path.join(rootPath, 'modules'));
+
+fs.readdirSync(module.exports.appNodeModules).forEach(folderName => {
+  if (folderName === 'react-scripts') return;
+  const fullName = path.join(module.exports.appNodeModules, folderName);
+  if (fs.lstatSync(fullName).isSymbolicLink()) {
+    module.exports.appModules.push(fs.realpathSync(fullName));
+  }
+});

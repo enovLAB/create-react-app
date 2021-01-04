@@ -31,13 +31,6 @@ const hasJsxRuntime = (() => {
   }
 })();
 
-function writeJson(fileName, object) {
-  fs.writeFileSync(
-    fileName,
-    JSON.stringify(object, null, 2).replace(/\n/g, os.EOL) + os.EOL
-  );
-}
-
 function verifyNoTypeScript() {
   const typescriptFiles = globby(
     ['**/*.(ts|tsx)', '!**/node_modules', '!**/*.d.ts'],
@@ -64,7 +57,6 @@ function verifyTypeScriptSetup() {
     if (verifyNoTypeScript()) {
       return;
     }
-    writeJson(paths.appTsConfig, {});
     firstTimeSetup = true;
   }
 
@@ -156,7 +148,6 @@ function verifyTypeScriptSetup() {
           : 'react',
       reason: 'to support the new JSX transform in React 17',
     },
-    paths: { value: undefined, reason: 'aliased imports are not supported' },
   };
 
   const formatDiagnosticHost = {
@@ -217,11 +208,12 @@ function verifyTypeScriptSetup() {
 
   if (appTsConfig.compilerOptions == null) {
     appTsConfig.compilerOptions = {};
-    firstTimeSetup = true;
   } else {
     // This is bug fix code of https://github.com/facebook/create-react-app/issues/9868
     // Bellow code release variable from non-extensible and freeze status.
-    appTsConfig.compilerOptions = JSON.parse(JSON.stringify(appTsConfig.compilerOptions));
+    appTsConfig.compilerOptions = JSON.parse(
+      JSON.stringify(appTsConfig.compilerOptions)
+    );
 
     // Original appTsConfig.compilerOptions status
     // Object.isExtensible(appTsConfig.compilerOptions) output: false
@@ -260,32 +252,6 @@ function verifyTypeScriptSetup() {
     messages.push(
       `${chalk.cyan('include')} should be ${chalk.cyan.bold('src')}`
     );
-  }
-
-  if (messages.length > 0) {
-    if (firstTimeSetup) {
-      console.log(
-        chalk.bold(
-          'Your',
-          chalk.cyan('tsconfig.json'),
-          'has been populated with default values.'
-        )
-      );
-      console.log();
-    } else {
-      console.warn(
-        chalk.bold(
-          'The following changes are being made to your',
-          chalk.cyan('tsconfig.json'),
-          'file:'
-        )
-      );
-      messages.forEach(message => {
-        console.warn('  - ' + message);
-      });
-      console.warn();
-    }
-    writeJson(paths.appTsConfig, appTsConfig);
   }
 
   // Reference `react-scripts` types
